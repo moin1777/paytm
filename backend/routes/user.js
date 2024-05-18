@@ -112,9 +112,10 @@ router.put("/", authMiddleware, async (req, res) => {
   });
 });
 
-router.get("/bulk", async (req, res) => {
+router.get("/bulk", authMiddleware, async (req, res) => {
   const filter = req.query.filter || "";
 
+  const reqUser = await User.findOne({_id: req.userId});
   const filterUsers = await User.find({
     $or: [{
       firstName: {
@@ -127,13 +128,28 @@ router.get("/bulk", async (req, res) => {
     }]
   });
 
+  const users = filterUsers.filter((user) => user.username.localeCompare(reqUser.username));
   res.json({
-    user: filterUsers.map(user => ({
+    user: users.map(user => ({
       username: user.username,
       firstName: user.firstName,
       lastName: user.lastName,
       _id: user._id
     }))
   })
-})
+});
+
+router.get("/userInfo", authMiddleware, async (req, res) => {
+  const user = await User.findOne({_id: req.userId});
+  const account = await Account.findOne({userId: req.userId});
+  if (!user || !account) {
+    return res.sendStatus(404);
+  }
+  let firstName = user.firstName;
+  let balance = account.balance;
+  res.json({
+    firstName,
+    balance
+  });
+});
 module.exports = router;
